@@ -1,72 +1,100 @@
-import pygame, cores, sys
-from random import randint
+import pygame
+import cores
+import sys
+import random
 from pygame.locals import *
 
 def main():
-
     pygame.init()
-
-    fonte = pygame.font.SysFont('gabriola', 40, False, False)
-
-    largura = 640
-    altura = 480
-
-    h_rect = 50
-    w_rect = 50
-
-    x = largura/2 - w_rect/2
-    y = altura/2 - h_rect/2
-
-    x_azul = randint(0, largura - w_rect)
-    y_azul = randint(0, altura - h_rect)
-
+    largura, altura = 1000, 600  # Corrigido: largura e altura na ordem correta
     tela = pygame.display.set_mode((largura, altura))
-    pygame.display.set_caption('Teste')
-
-    pontos = 0
-
+    pygame.display.set_caption('Cobrathon')
     clock = pygame.time.Clock()
 
-    while True:
-        clock.tick(100)
-        tela.fill((0, 0, 0))
-        mensagem = f'Pontos: {pontos}'
-        texto_formatado = fonte.render(mensagem, True, cores.branco)
-        for event in pygame.event.get():
-            if event.type == QUIT:
-                pygame.quit()
-                sys.exit()
+    tam_quadrado = 20
+    speed_jogo = 7
 
-            if pygame.key.get_pressed()[K_w]:
-                y -= 10
-            if pygame.key.get_pressed()[K_a]:
-                x -= 10
-            if pygame.key.get_pressed()[K_s]:
-                y += 10
-            if pygame.key.get_pressed()[K_d]:
-                x += 10
-            
-            if x > largura:
-                x = 0 
-            if x < 0:
-                x = largura
+    def gerar_comida():
+        comida_x = round(random.randrange(0, largura - tam_quadrado) / tam_quadrado) * tam_quadrado
+        comida_y = round(random.randrange(0, altura - tam_quadrado) / tam_quadrado) * tam_quadrado
+        return comida_x, comida_y
 
-            if y > altura:
-                y = 0 
-            if y < 0:
-                y = altura
+    def draw_comida(tam, comida_x, comida_y):
+        pygame.draw.rect(tela, cores.vermelho, [comida_x, comida_y, tam, tam])
 
-        ret_vermelho = pygame.draw.rect(tela, cores.vermelho, (x, y, w_rect, h_rect))
-        ret_azul = pygame.draw.rect(tela, cores.azul, (x_azul, y_azul, w_rect, h_rect))
+    def draw_cobra(tam, pixels):
+        for pixel in pixels:
+            pygame.draw.rect(tela, cores.verde, [pixel[0], pixel[1], tam, tam])
 
-        if ret_vermelho.colliderect(ret_azul):
-            x_azul = randint(0, largura - w_rect)
-            y_azul = randint(0, altura - h_rect)
-            pontos += 1
+    def draw_pontos(pontos):
+        fonte = pygame.font.SysFont('Gabriola', 40, False, False)
+        text = fonte.render(f'Pontos: {pontos}', True, cores.branco)
+        tela.blit(text, [1, 1])
 
-        tela.blit(texto_formatado, (10, 10))
+    def select_dir(key, dir_x, dir_y):
+        # Evita inverter a direção diretamente e suporta WASD e setas
+        if (key == pygame.K_DOWN or key == pygame.K_s) and dir_y != -tam_quadrado:
+            return 0, tam_quadrado
+        elif (key == pygame.K_UP or key == pygame.K_w) and dir_y != tam_quadrado:
+            return 0, -tam_quadrado
+        elif (key == pygame.K_RIGHT or key == pygame.K_d) and dir_x != -tam_quadrado:
+            return tam_quadrado, 0
+        elif (key == pygame.K_LEFT or key == pygame.K_a) and dir_x != tam_quadrado:
+            return -tam_quadrado, 0
+        return dir_x, dir_y
 
-        pygame.display.update()  
+    def rodar_jogo():
+        x_cobra = largura / 2
+        y_cobra = altura / 2
+        dir_xc = 0
+        dir_yc = 0
+        tam_cobra = 1
+        pixels = []
+        comida_x, comida_y = gerar_comida()
+
+        while True:
+            tela.fill(cores.preto)
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    sys.exit()
+                elif event.type == pygame.KEYDOWN:
+                    dir_xc, dir_yc = select_dir(event.key, dir_xc, dir_yc)
+
+            x_cobra += dir_xc
+            y_cobra += dir_yc
+
+            if x_cobra >= largura:
+                x_cobra = 0
+            elif x_cobra < 0:
+                x_cobra = largura - tam_quadrado
+            if y_cobra >= altura:
+                y_cobra = 0
+            elif y_cobra < 0:
+                y_cobra = altura - tam_quadrado
+
+            pixels.append([x_cobra, y_cobra])
+            if len(pixels) > tam_cobra:
+                del pixels[0]
+
+            for pixel in pixels[:-1]:
+                if pixel == [x_cobra, y_cobra]:
+                    pygame.quit()
+                    sys.exit()
+
+            draw_comida(tam_quadrado, comida_x, comida_y)
+            draw_cobra(tam_quadrado, pixels)
+            draw_pontos(tam_cobra - 1)
+
+            pygame.display.update()
+
+            if x_cobra == comida_x and y_cobra == comida_y:
+                tam_cobra += 1
+                comida_x, comida_y = gerar_comida()
+
+            clock.tick(speed_jogo)
+
+    rodar_jogo()
 
 if __name__ == '__main__':
     main()
